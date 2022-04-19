@@ -61,6 +61,11 @@ public class Luban {
             return this;
         }
 
+        public Builder setFocusAlpha(boolean focus) {
+            luban.keepConfig(focus);
+            return this;
+        }
+
         public File get() {
             return luban.get();
         }
