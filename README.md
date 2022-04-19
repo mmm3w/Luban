@@ -1,126 +1,71 @@
 # Luban
 
-[![Build Status](https://travis-ci.org/Curzibn/Luban.svg?branch=master)](https://travis-ci.org/Curzibn/Luban)
-[ ![Download](https://api.bintray.com/packages/curzibn/maven/Luban/images/download.svg) ](https://bintray.com/curzibn/maven/Luban/_latestVersion)
+对原Luban按个人需求做了相关调整，以及适配Android的沙盒存储模式，部分实现也参考了[KLuban](https://github.com/forJrking/KLuban)
 
-<div align="right">
-<a href="Translation/README-EN.md">:book: English Documentation</a>
-</div>
+### [Raw README](https://github.com/Curzibn/Luban/blob/master/README.md)
 
-`Luban`（鲁班） —— `Android`图片压缩工具，仿微信朋友圈压缩策略。
+### 相关改动
 
-`Luban-turbo` —— 鲁班项目的`turbo`版本，[查看`trubo`分支](https://github.com/Curzibn/Luban/tree/turbo)。
+- [x] 删除了异步压缩<br>原项目使用了`AsyncTask`去作为多文件或单文件的异步压缩，但个人认为这部分可以由外部去实现，无论是使用协程也好、线程池也好，又或者是简单粗暴的new Thread。
+  
+- [x] 单实例不再支持列表数据<br>配合上一条件做出的相关调整
 
-# 写在前面
+- [x] 整合部分KLuban中的逻辑，详见[KLuban](https://github.com/forJrking/KLuban/blob/master/README.md)，并搬取了Glide的数组池相关逻辑
 
-家境贫寒，工作繁忙。只能不定期更新，还望网友们见谅！
+- [x] Kotlin迁移<br>大部分逻辑迁移至kotlin，因功能调整删减了一些api，并且提供了kotlin的新的调用形式
 
-# 项目描述
+- [x] 适配Android沙盒模式<br>若输出文件需要对外共享，则要么存储在沙盒中再依赖ContentProvider来共享，要么申请相关权限获取OutputStream实例来直接输出。<br>注：关于沙盒模式，十分建议在`AndroidManifest.xml`中配置`android:requestLegacyExternalStorage="true"`。在android10中因为存储模式调整用力过猛导致无法使用路径直接访问沙盒内部的文件，而在后续的版本中又开放了此权限，这项配置并不是为了逃避适配沙盒模式，而且为了保证在Android10中能够通过路径直接访问沙盒内部存储。对于沙盒外部的存储，在高版本中依然需要申请相关权限然后依赖流来读写
 
-目前做`App`开发总绕不开图片这个元素。但是随着手机拍照分辨率的提升，图片的压缩成为一个很重要的问题。单纯对图片进行裁切，压缩已经有很多文章介绍。但是裁切成多少，压缩成多少却很难控制好，裁切过头图片太小，质量压缩过头则显示效果太差。
+- [ ] 支持Bitmap和Base64的输入
 
-于是自然想到`App`巨头“微信”会是怎么处理，`Luban`（鲁班）就是通过在微信朋友圈发送近100张不同分辨率图片，对比原图与微信压缩后的图片逆向推算出来的压缩算法。
+- [ ] 迁移库至jitpack<br>原始的jcenter库已废弃
+  
+Java Api:
 
-因为有其他语言也想要实现`Luban`，所以描述了一遍[算法步骤](/DESCRIPTION.md)。
+请参照原来文档，存在部分api删减
 
-因为是逆向推算，效果还没法跟微信一模一样，但是已经很接近微信朋友圈压缩后的效果，具体看以下对比！
+Kotlin Api:
+```kotlin
+val file:File? = Luban.with(this)
+    .compress {
+        //请下面任选一种作为输入，必须
+        input(inputStream = /*InputStream*/)
+        input(uri = /*Uri*/, context = /*Context*/)
+        input(file = /*File*/) //请不要使用沙盒以外的任何路径
+        input(path = /*String*/) //请不要使用沙盒以外的任何路径
+        //待支持
+        input(base64 = /*String*/)
+        input(bitmap = /*Bitmap*/)
 
-# 效果与对比
+        //请下面任选一种作为输出，可选
+        output(dir = /*File*/) //输出目录，请不要使用沙盒以外的任何路径
+        output(path = /*String*/) //输出目录，请不要使用沙盒以外的任何路径
+        output(outputStream = /*OutputStream*/) //输出流，get时不会获得File实例，可应对沙盒模式下对外部存储的写入（未测试）
 
-内容 | 原图 | `Luban` | `Wechat`
----- | ---- | ------ | ------
-截屏 720P |720*1280,390k|720*1280,87k|720*1280,56k
-截屏 1080P|1080*1920,2.21M|1080*1920,104k|1080*1920,112k
-拍照 13M(4:3)|3096*4128,3.12M|1548*2064,141k|1548*2064,147k
-拍照 9.6M(16:9)|4128*2322,4.64M|1032*581,97k|1032*581,74k
-滚动截屏|1080*6433,1.56M|1080*6433,351k|1080*6433,482k
+        //压缩阈值，可选，默认100KB，例：ignoreBy(size = 200L, unit = MemoryUnit.KB)
+        ignoreBy(size = /*Long*/, unit = /*MemoryUnit*/)
 
-# 导入
+        //定义输出名字，可选，默认纳秒时间戳，例：rename( "test-$it" )
+        rename{ it }
 
-```sh
-implementation 'top.zibin:Luban:1.1.8'
+        //压缩文件格式，可选，默认参照输入格式，支持 JPG,PNG,WEBP，例：format(Bitmap.CompressFormat.PNG)
+        format(/*Bitmap.CompressFormat*/)
+
+        //质量压缩系数，0-100，可选，默认60，例：quality(90)
+        quality(/*Int*/)
+
+        //最大大小，可选，不一定能达到，例：maxSize(size = 300L, unit = MemoryUnit.KB)
+        maxSize(size = /*Long*/, unit = /*MemoryUnit*/)
+
+        //保持原有的编码方式，可选，内存不够时自动降级策略会失效
+        keepConfig(true)
+
+        //开起双线性采样，可选，参照KLuban以及其提及文档，对纯文字内容效果较好
+        bilinear(true)
+    }
 ```
 
-# 使用
-
-### 方法列表
-
-方法 | 描述
----- | ----
-load | 传入原图
-filter | 设置开启压缩条件
-ignoreBy | 不压缩的阈值，单位为K
-setFocusAlpha | 设置是否保留透明通道 
-setTargetDir | 缓存压缩图片路径
-setCompressListener | 压缩回调接口
-setRenameListener | 压缩前重命名接口
-
-### 异步调用
-
-`Luban`内部采用`IO`线程进行图片压缩，外部调用只需设置好结果监听即可：
-
-```java
-Luban.with(this)
-        .load(photos)
-        .ignoreBy(100)
-        .setTargetDir(getPath())
-        .filter(new CompressionPredicate() {
-          @Override
-          public boolean apply(String path) {
-            return !(TextUtils.isEmpty(path) || path.toLowerCase().endsWith(".gif"));
-          }
-        })
-        .setCompressListener(new OnCompressListener() {
-          @Override
-          public void onStart() {
-            // TODO 压缩开始前调用，可以在方法内启动 loading UI
-          }
-
-          @Override
-          public void onSuccess(File file) {
-            // TODO 压缩成功后调用，返回压缩后的图片文件
-          }
-
-          @Override
-          public void onError(Throwable e) {
-            // TODO 当压缩过程出现问题时调用
-          }
-        }).launch();
-```
-
-### 同步调用
-
-同步方法请尽量避免在主线程调用以免阻塞主线程，下面以rxJava调用为例
-
-```java
-Flowable.just(photos)
-    .observeOn(Schedulers.io())
-    .map(new Function<List<String>, List<File>>() {
-      @Override public List<File> apply(@NonNull List<String> list) throws Exception {
-        // 同步方法直接返回压缩后的文件
-        return Luban.with(MainActivity.this).load(list).get();
-      }
-    })
-    .observeOn(AndroidSchedulers.mainThread())
-    .subscribe();
-```
-
-### RELEASE NOTE
-
-[Here](https://github.com/Curzibn/Luban/releases)
-
-# License
-
-    Copyright 2016 Zheng Zibin
-    
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-    
-        http://www.apache.org/licenses/LICENSE-2.0
-    
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+关于分区存储的说明：
+ - 请不要使用外部存储的路径直接读写文件
+ - 在没有读取权限的情况下，请不要直接通过路径读取从媒体数据库中获取的其他应用的媒体文件，因为此时即使能够获取路径，也只能访问自身应用创建的媒体文件。
+ - 在没有配置`android:requestLegacyExternalStorage="true"`的情况下在`Android10`中不要直接使用路径直接读写任意目录下的文件，官方对于`Android10`的存储适配建议是停用分区存储并使用`Android9`及以下的存储方案，即配置`android:requestLegacyExternalStorage="true"`。
