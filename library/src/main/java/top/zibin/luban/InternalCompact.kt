@@ -59,6 +59,7 @@ internal object InternalCompact {
         }
     }
 
+    @Suppress("DEPRECATION")
     fun formatHit(type: ImageHeaderParser.ImageType): Bitmap.CompressFormat {
         return when (type) {
             ImageHeaderParser.ImageType.PNG,

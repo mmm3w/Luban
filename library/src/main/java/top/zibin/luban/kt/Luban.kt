@@ -8,7 +8,7 @@ import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 
-@Suppress("unused")
+@Suppress("unused", "UNUSED_PARAMETER")
 class Luban(private var outputDir: File) {
 
     private lateinit var mInputStream: InputStream
