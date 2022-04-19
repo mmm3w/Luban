@@ -1,5 +1,7 @@
 # Luban
 
+[![](https://jitpack.io/v/mmm3w/Luban.svg)](https://jitpack.io/#mmm3w/Luban)
+
 对原Luban按个人需求做了相关调整，以及适配Android的沙盒存储模式，部分实现也参考了[KLuban](https://github.com/forJrking/KLuban)
 
 ### [Raw README](https://github.com/Curzibn/Luban/blob/master/README.md)
@@ -19,7 +21,28 @@
 - [ ] 支持Bitmap和Base64的输入
 
 - [ ] 迁移库至jitpack<br>原始的jcenter库已废弃
-  
+
+
+### 使用
+
+Step 1. Add the JitPack repository to your build file
+
+Add it in your root build.gradle at the end of repositories:
+
+	allprojects {
+		repositories {
+			...
+			maven { url 'https://jitpack.io' }
+		}
+	}
+Step 2. Add the dependency
+
+	dependencies {
+	        implementation 'com.github.mmm3w:Luban:1.2.0-fix_build'
+	}
+
+~~吐了，留下了一个奇怪的版本号~~
+
 Java Api:
 
 请参照原来文档，存在部分api删减
