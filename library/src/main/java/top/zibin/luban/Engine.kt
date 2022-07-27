@@ -3,6 +3,7 @@ package top.zibin.luban
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.util.Base64
 import top.zibin.luban.bumptech.ArrayPoolProvider
 import top.zibin.luban.bumptech.DefaultImageHeaderParser
 import top.zibin.luban.bumptech.RecyclableBufferedInputStream
@@ -12,12 +13,11 @@ class Engine(
     inputStream: InputStream,
     private val targetDir: File,
     private val rename: ((String) -> String)?,
-    private val outputStream: OutputStream?,
     private val format: Bitmap.CompressFormat?,
     private val quality: Int,
     private val maxSize: Long = 0,
     private val bilinear: Boolean,
-    private val keepConfig: Boolean
+    private val keepConfig: Boolean,
 ) {
     private val mInputStream: RecyclableBufferedInputStream =
         RecyclableBufferedInputStream(inputStream).apply {
@@ -25,8 +25,10 @@ class Engine(
         }
     private val imageHeaderParser = DefaultImageHeaderParser()
 
+    private var saveFile: File? = null
+
     @Suppress("ConvertTryFinallyToUseCall")
-    fun compress(): File? {
+    fun compress(): ByteArrayOutputStream {
         mInputStream.reset()
         val type = imageHeaderParser.getType(mInputStream)
 
@@ -41,7 +43,6 @@ class Engine(
         val inSampleSize =
             if (bilinear) 1 else InternalCompact.computeSize(options.outWidth, options.outHeight)
                 .coerceAtLeast(1)
-
 
         val scale =
             if (bilinear) InternalCompact.computeScaleSize(
@@ -88,6 +89,11 @@ class Engine(
             ?: throw IOException("decodeStream error")
         bitmap = transformBitmap(bitmap, scale, angle)
 
+        val fileName = "${System.nanoTime()}.${InternalCompact.suffixHit(type)}".let {
+            rename?.invoke(it) ?: it
+        }
+        saveFile = File(targetDir, fileName)
+
         val stream = ByteArrayOutputStream()
         //质量压缩开始 这一步可能出错 比如手机只支持4096*4096做大尺寸
         try {
@@ -110,43 +116,12 @@ class Engine(
         }
 
         try {
-            return stream.use { bos ->
-                val fileName = "${System.nanoTime()}.${InternalCompact.suffixHit(type)}".let {
-                    rename?.invoke(it) ?: it
-                }
-                val cacheFile = File(targetDir, fileName)
-                (outputStream ?: FileOutputStream(cacheFile)).use { fos ->
-                    bos.writeTo(fos)
-                    fos.flush()
-                }
-                if (outputStream == null) cacheFile else null
-            }
+            return stream
         } finally {
             mInputStream.close()
         }
     }
 
-    @Suppress("ConvertTryFinallyToUseCall")
-    fun copy(): File? {
-        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeStream(mInputStream, null, options)
-
-        val suffix = options.outMimeType.replace("image/", "")
-        val fileName = "${System.nanoTime()}.$suffix".let {
-            rename?.invoke(it) ?: it
-        }
-        val cacheFile = File(targetDir, fileName)
-
-        mInputStream.reset()
-        return try {
-            (outputStream ?: FileOutputStream(cacheFile)).use { fos ->
-                mInputStream.copyTo(fos)
-            }
-            if (outputStream == null) cacheFile else null
-        } finally {
-            mInputStream.close()
-        }
-    }
 
     private fun transformBitmap(bitmap: Bitmap, scale: Float, angle: Int): Bitmap {
         if (scale == 1f && angle <= 0) return bitmap
@@ -165,4 +140,82 @@ class Engine(
             System.gc()
         }
     }
+
+
+    fun toBitmap(): Bitmap {
+        return compress().use { stream ->
+            val byteArray = stream.toByteArray()
+            BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
+        }
+    }
+
+    fun copyBitmap(): Bitmap {
+        return mInputStream.use { mInputStream ->
+            BitmapFactory.decodeStream(mInputStream)
+        }
+    }
+
+    fun toFile(): File {
+        return compress().use { stream ->
+            saveFile?.also {
+                FileOutputStream(it).use { fos ->
+                    stream.writeTo(fos)
+                    fos.flush()
+                }
+            } ?: throw IllegalStateException()
+        }
+    }
+
+    fun copyFile(): File {
+        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeStream(mInputStream, null, options)
+
+        val suffix = options.outMimeType.replace("image/", "")
+        val fileName = "${System.nanoTime()}.$suffix".let {
+            rename?.invoke(it) ?: it
+        }
+        val cacheFile = File(targetDir, fileName)
+
+        mInputStream.reset()
+        mInputStream.use { mInputStream ->
+            FileOutputStream(cacheFile).use { fos ->
+                mInputStream.copyTo(fos)
+            }
+            return cacheFile
+        }
+    }
+
+    fun toOutputStream(outputStream: OutputStream) {
+        compress().use { bos ->
+            outputStream.use { fos ->
+                bos.writeTo(fos)
+                fos.flush()
+            }
+        }
+    }
+
+    fun copyOutputStream(outputStream: OutputStream) {
+        mInputStream.use { mInputStream ->
+            outputStream.use { fos ->
+                mInputStream.copyTo(fos)
+            }
+        }
+    }
+
+    fun toBase64(): String {
+        return compress().use { stream ->
+            Base64.encodeToString(stream.toByteArray(), Base64.NO_PADDING)
+        }
+    }
+
+    fun copyBase64(): String {
+        return mInputStream.use { inputStream ->
+            ByteArrayOutputStream().use { outputStream ->
+                inputStream.copyTo(outputStream)
+                Base64.encodeToString(outputStream.toByteArray(), Base64.NO_PADDING)
+            }
+        }
+    }
+
+
 }

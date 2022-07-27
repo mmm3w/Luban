@@ -9,11 +9,70 @@
         android:id="@+id/main_select"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="select" />
+        android:text="选择图片" />
 
-    <TextView
-        android:id="@+id/main_info"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/input_type"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="输入方式"
+                android:padding="8dp" />
+
+            <TextView
+                android:id="@+id/input_content"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="8dp"
+                android:text="输入内容" />
+
+            <ImageView
+                android:id="@+id/input_image"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/output_type"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="输出方式"
+                android:padding="8dp" />
+
+            <TextView
+                android:id="@+id/output_content"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="输出结果"
+                android:padding="8dp" />
+
+            <ImageView
+                android:layout_gravity="bottom"
+                android:id="@+id/output_image"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+
+    </LinearLayout>
 
 </LinearLayout>

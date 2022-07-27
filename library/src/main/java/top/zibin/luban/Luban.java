@@ -3,6 +3,7 @@ package top.zibin.luban;
 import static top.zibin.luban.kt.Luban.DEFAULT_DISK_CACHE_DIR;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.net.Uri;
 
 import java.io.File;
@@ -11,7 +12,6 @@ import java.io.InputStream;
 import top.zibin.luban.kt.MemoryUnit;
 
 public class Luban {
-
     public static Builder with(Context context) {
         return new Builder(context);
     }
@@ -66,8 +66,20 @@ public class Luban {
             return this;
         }
 
-        public File get() {
-            return luban.get();
+        public void get() {
+            luban.get();
+        }
+
+        public File getFile() {
+            return luban.getFile();
+        }
+
+        public String getBase64() {
+            return luban.getBase64();
+        }
+
+        public Bitmap getBitmap() {
+            return luban.getBitmap();
         }
     }
 }

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/output_stream"
+        android:title="Stream" />
+    <item
+        android:id="@+id/output_file"
+        android:title="File" />
+    <item
+        android:id="@+id/output_base64"
+        android:title="base64" />
+    <item
+        android:id="@+id/output_bitmap"
+        android:title="bitmap" />
+</menu>

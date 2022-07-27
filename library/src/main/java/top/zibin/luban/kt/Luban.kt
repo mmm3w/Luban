@@ -3,10 +3,9 @@ package top.zibin.luban.kt
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
+import android.util.Base64
 import top.zibin.luban.Engine
-import java.io.File
-import java.io.InputStream
-import java.io.OutputStream
+import java.io.*
 
 @Suppress("unused", "UNUSED_PARAMETER")
 class Luban(private var outputDir: File) {
@@ -26,7 +25,7 @@ class Luban(private var outputDir: File) {
         const val DEFAULT_DISK_CACHE_DIR = "luban_disk_cache"
 
         fun with(context: Context): Luban {
-            return Luban(File(context.cacheDir, DEFAULT_DISK_CACHE_DIR).apply { ensureDir() })
+            return Luban(cacheDir(context).apply { ensureDir() })
         }
 
         fun cacheDir(context: Context): File {
@@ -37,9 +36,14 @@ class Luban(private var outputDir: File) {
     /**
      * 压缩
      */
-    fun compress(func: Luban.() -> Unit): File? = run {
+    fun compress(func: Luban.() -> Unit) = run {
         this.func()
         this.get()
+    }
+
+    fun config(func: Luban.() -> Unit): Luban {
+        this.func()
+        return this
     }
 
     /**
@@ -52,17 +56,27 @@ class Luban(private var outputDir: File) {
         file: File? = null,
         path: String? = null,
         base64: String? = null, //waiting to support
-        bitmap: String? = null,//waiting to support
+        bitmap: Bitmap? = null,//waiting to support
         context: Context? = null,
     ) {
-        mInputStream = inputStream
-            ?: uri?.run {
-                context?.contentResolver?.openInputStream(this)
-                    ?: throw IllegalArgumentException("You must specify context")
-            }
-                    ?: file?.inputStream()
-                    ?: path?.run { File(this) }?.inputStream()
-                    ?: throw IllegalArgumentException("You need to specify at least one parameter")
+
+        inputStream?.apply {
+            mInputStream = this
+        } ?: uri?.apply {
+            mInputStream = context?.contentResolver?.openInputStream(this)
+                ?: throw IllegalArgumentException("You must specify context")
+        } ?: file?.apply {
+            mInputStream = inputStream()
+        } ?: path?.apply {
+            mInputStream = File(this).takeIf { it.exists() }?.inputStream()
+                ?: throw IllegalArgumentException("File is not exists")
+        } ?: base64?.ifEmpty { null }?.apply {
+            mInputStream = ByteArrayInputStream(Base64.decode(this, Base64.NO_PADDING))
+        } ?: bitmap?.apply {
+            val baos = ByteArrayOutputStream()
+            compress(Bitmap.CompressFormat.PNG, 100, baos)
+            mInputStream = ByteArrayInputStream(baos.toByteArray())
+        } ?: throw IllegalArgumentException("You need to specify at enough parameter")
     }
 
     /**
@@ -76,14 +90,15 @@ class Luban(private var outputDir: File) {
         path: String? = null,
         outputStream: OutputStream? = null,
     ) {
-        if (dir == null && path.isNullOrEmpty() && outputStream == null) {
-            throw IllegalArgumentException("You need to specify at least one parameter")
-        }
-        mOutput = outputStream ?: run {
-            outputDir = dir ?: File(path)
+        outputStream?.apply {
+            mOutput = this
+        } ?: dir?.apply {
+            outputDir = this
             outputDir.ensureDir()
-            null
-        }
+        } ?: path?.ifEmpty { null }?.apply {
+            outputDir = File(this)
+            outputDir.ensureDir()
+        } ?: throw IllegalArgumentException("You need to specify at enough parameter")
     }
 
     /**
@@ -148,20 +163,53 @@ class Luban(private var outputDir: File) {
         this.mKeepConfig = isKeep
     }
 
-    /**
-     * 压缩数据
-     */
-    fun get(): File? {
+    private fun assertInput() {
         if (!this::mInputStream.isInitialized) {
             throw IllegalArgumentException("get: You must specify input stream from load method")
         }
-        val length = mInputStream.available()
+    }
 
+    /**
+     * 压缩数据
+     * 默认不返回任何东西，output配置为OutputStream时可用
+     */
+    fun get() {
+        assertInput()
+
+        val length = mInputStream.available()
         val engine = Engine(
             mInputStream,
             outputDir,
             mReName,
-            mOutput,
+            mFormat,
+            mQuality,
+            mMaxSize,
+            isBilinearInterpolationEnable,
+            mKeepConfig
+        )
+
+        if (length > mLeastCompressSize) {
+            mOutput?.apply { engine.toOutputStream(this) } ?: kotlin.run {
+                engine.toFile()
+            }
+        } else {
+            mOutput?.apply { engine.copyOutputStream(this) } ?: kotlin.run {
+                engine.copyFile()
+            }
+        }
+    }
+
+    /**
+     * 压缩数据
+     * 图片压缩导出至文件，output未配置File或Path参数时会抛出异常
+     */
+    fun getFile(): File {
+        assertInput()
+        val length = mInputStream.available()
+        val engine = Engine(
+            mInputStream,
+            outputDir,
+            mReName,
             mFormat,
             mQuality,
             mMaxSize,
@@ -169,11 +217,57 @@ class Luban(private var outputDir: File) {
             mKeepConfig
         )
         return if (length > mLeastCompressSize) {
-            //compress
-            engine.compress()
+            engine.toFile()
         } else {
-            //copy
-            engine.copy()
+            engine.copyFile()
+        }
+    }
+
+    /**
+     * 压缩数据
+     * 以Bitmap形式导出，后续自行处理，可不配置output
+     */
+    fun getBitmap(): Bitmap {
+        assertInput()
+        val length = mInputStream.available()
+        val engine = Engine(
+            mInputStream,
+            outputDir,
+            mReName,
+            mFormat,
+            mQuality,
+            mMaxSize,
+            isBilinearInterpolationEnable,
+            mKeepConfig
+        )
+        return if (length > mLeastCompressSize) {
+            engine.toBitmap()
+        } else {
+            engine.copyBitmap()
+        }
+    }
+
+    /**
+     * 压缩数据
+     * 以base64形式导出，慎用，可不配置output
+     */
+    fun getBase64(): String {
+        assertInput()
+        val length = mInputStream.available()
+        val engine = Engine(
+            mInputStream,
+            outputDir,
+            mReName,
+            mFormat,
+            mQuality,
+            mMaxSize,
+            isBilinearInterpolationEnable,
+            mKeepConfig
+        )
+        return if (length > mLeastCompressSize) {
+            engine.toBase64()
+        } else {
+            engine.copyBase64()
         }
     }
 }
