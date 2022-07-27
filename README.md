@@ -42,10 +42,8 @@ Add it in your root build.gradle at the end of repositories:
 Step 2. Add the dependency
 
 	dependencies {
-	        implementation 'com.github.mmm3w:Luban:1.2.0-fix_build'
+	        implementation 'com.github.mmm3w:Luban:1.3.0'
 	}
-
-~~吐了，留下了一个奇怪的版本号~~
 
 Java Api:
 
