@@ -11,15 +11,19 @@ import kotlin.math.min
 import kotlin.math.pow
 
 internal object InternalCompact {
-
-    fun computeScaleSize(width: Int, height: Int): Float {
-        var scale = 1f
+    fun computeScaleSize(
+        width: Int, //图片的宽度
+        height: Int, //图片的高度
+        baseLine: Float = 1280f, // 正常比例图片的缩放基准值
+        //之后再额外增加长条图的基线数值
+    ): Float {
+        var scale = 1f //1920 * 1080
         val max = max(width, height)
         val min = min(width, height)
         val ratio = min / (max * 1f)
         if (ratio >= 0.5f) {
-            if (max > 1280f) scale = 1280f / (max * 1f)
-        } else {
+            if (max > baseLine) scale = baseLine / (max * 1f)
+        } else { //长边是短边2倍以上长度的情况
             val multiple = max / min
             if (multiple < 10) {
                 if (min > 1000f && (1f - ratio / 2f) * min > 1000f) {
@@ -36,7 +40,11 @@ internal object InternalCompact {
         return scale
     }
 
-    fun computeSize(width: Int, height: Int): Int {
+    fun computeSize(
+        width: Int, //图片的宽度
+        height: Int, //图片的高度
+        baseLine: Int = 1280,
+    ): Int {
         val srcWidth = if (width % 2 == 1) width + 1 else width
         val srcHeight = if (height % 2 == 1) height + 1 else height
 
@@ -50,12 +58,12 @@ internal object InternalCompact {
                 longSide < 1664 -> 1
                 longSide < 4990 -> 2
                 longSide in 4991..10239 -> 4
-                else -> longSide / 1280
+                else -> longSide / baseLine
             }
         } else if (scale <= 0.5625 && scale > 0.5) {
-            if (longSide / 1280 == 0) 1 else longSide / 1280
+            if (longSide / baseLine == 0) 1 else longSide / baseLine
         } else {
-            ceil(longSide / (1280.0 / scale)).toInt()
+            ceil(longSide / (baseLine.toDouble() / scale)).toInt()
         }
     }
 

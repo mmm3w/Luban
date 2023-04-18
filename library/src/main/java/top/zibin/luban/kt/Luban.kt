@@ -20,6 +20,8 @@ class Luban(private var outputDir: File) {
     private var mMaxSize: Long = 0L
     private var mQuality: Int = 60
     private var mKeepConfig = false
+    private var mKeepResolution = false
+    private var mBaseSize = 1280
 
     companion object {
         const val DEFAULT_DISK_CACHE_DIR = "luban_disk_cache"
@@ -161,6 +163,27 @@ class Luban(private var outputDir: File) {
      */
     fun keepConfig(isKeep: Boolean) {
         this.mKeepConfig = isKeep
+        if (this.mKeepResolution) {
+            this.mKeepResolution = false
+        }
+    }
+
+    /**
+     * 不对分辨率进行调整，强制保持分辨率
+     */
+    fun keepResolution(isKeep: Boolean) {
+        this.mKeepResolution = isKeep
+        if (this.mKeepConfig) {
+            this.mKeepConfig = false
+        }
+    }
+
+    /**
+     * 正常比例图片的基准分辨率 默认1280
+     * 部分压缩后太过模糊或者原图片对焦存在问题图像模糊可尝试调高到1920
+     */
+    fun baseSize(size: Int) {
+        this.mBaseSize = size
     }
 
     private fun assertInput() {
@@ -185,7 +208,9 @@ class Luban(private var outputDir: File) {
             mQuality,
             mMaxSize,
             isBilinearInterpolationEnable,
-            mKeepConfig
+            mKeepConfig,
+            mKeepResolution,
+            mBaseSize
         )
 
         if (length > mLeastCompressSize) {
@@ -214,7 +239,9 @@ class Luban(private var outputDir: File) {
             mQuality,
             mMaxSize,
             isBilinearInterpolationEnable,
-            mKeepConfig
+            mKeepConfig,
+            mKeepResolution,
+            mBaseSize
         )
         return if (length > mLeastCompressSize) {
             engine.toFile()
@@ -238,7 +265,9 @@ class Luban(private var outputDir: File) {
             mQuality,
             mMaxSize,
             isBilinearInterpolationEnable,
-            mKeepConfig
+            mKeepConfig,
+            mKeepResolution,
+            mBaseSize
         )
         return if (length > mLeastCompressSize) {
             engine.toBitmap()
@@ -262,7 +291,9 @@ class Luban(private var outputDir: File) {
             mQuality,
             mMaxSize,
             isBilinearInterpolationEnable,
-            mKeepConfig
+            mKeepConfig,
+            mKeepResolution,
+            mBaseSize
         )
         return if (length > mLeastCompressSize) {
             engine.toBase64()

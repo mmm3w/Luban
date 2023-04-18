@@ -18,6 +18,8 @@ class Engine(
     private val maxSize: Long = 0,
     private val bilinear: Boolean,
     private val keepConfig: Boolean,
+    private val keepResolution: Boolean,
+    private val baseSize: Int,
 ) {
     private val mInputStream: RecyclableBufferedInputStream =
         RecyclableBufferedInputStream(inputStream).apply {
@@ -41,14 +43,27 @@ class Engine(
 
         //邻近采样比例
         val inSampleSize =
-            if (bilinear) 1 else InternalCompact.computeSize(options.outWidth, options.outHeight)
-                .coerceAtLeast(1)
+            if (keepResolution) {
+                1
+            } else {
+                if (bilinear) 1 else InternalCompact.computeSize(
+                    options.outWidth,
+                    options.outHeight,
+                    baseSize
+                )
+                    .coerceAtLeast(1)
+            }
 
         val scale =
-            if (bilinear) InternalCompact.computeScaleSize(
-                options.outWidth,
-                options.outHeight
-            ) else 1F
+            if (keepResolution) {
+                1F
+            } else {
+                if (bilinear) InternalCompact.computeScaleSize(
+                    options.outWidth,
+                    options.outHeight,
+                    baseSize.toFloat()
+                ) else 1F
+            }
 
         var compressConfig = if (keepConfig) {
             options.inPreferredConfig

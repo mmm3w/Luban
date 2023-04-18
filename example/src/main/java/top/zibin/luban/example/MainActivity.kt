@@ -147,6 +147,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+
+        luban.quality(80)
+        luban.bilinear(true)
+        luban.baseSize(1920)
+//        luban.keepResolution(true)
+
         when (outputType.text) {
             OUTPUT_STREAM -> {
                 val baos = ByteArrayOutputStream()
